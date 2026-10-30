@@ -12,7 +12,8 @@ import AppKit
 ///   ready / status        {accessibility, microphone, recording}
 ///   accessibility         {trusted}           — sent when the grant changes
 ///   recording-started
-///   recording-finished    {path, duration}    — Electron transcribes, then deletes the file
+///   recording-finished    {path, duration, app?} — Electron transcribes, then deletes the file.
+///                                              `app` is the app you were dictating into.
 ///   recording-discarded   {reason}            — e.g. "too-short"
 ///   recording-blocked     {reason}            — "disabled" (no API key yet) or "microphone"
 ///   pasted
@@ -29,6 +30,9 @@ final class Helper {
 
     /// Electron turns recording off until setup (API key) is done.
     private var enabled = false
+
+    /// Name of the app in front when recording started — where the text will be pasted.
+    private var targetApp: String?
 
     func start() {
         hotkeyMonitor.onPress = { [weak self] in self?.startRecording() }
@@ -86,6 +90,7 @@ final class Helper {
         }
         do {
             try recorder.start()
+            targetApp = NSWorkspace.shared.frontmostApplication?.localizedName
             bridge.send("recording-started")
         } catch {
             bridge.send("error", ["message": "Couldn't record: \(error.localizedDescription)"])
@@ -99,7 +104,9 @@ final class Helper {
             bridge.send("recording-discarded", ["reason": "too-short"])
             return
         }
-        bridge.send("recording-finished", ["path": recording.url.path, "duration": recording.duration])
+        var fields: [String: Any] = ["path": recording.url.path, "duration": recording.duration]
+        if let targetApp { fields["app"] = targetApp }
+        bridge.send("recording-finished", fields)
     }
 
     // MARK: - Accessibility
