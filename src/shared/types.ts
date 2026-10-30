@@ -14,13 +14,20 @@ export interface AppState {
   accessibility: boolean
   hasApiKey: boolean
   hotkey: HotkeyName
+  /** Whether transcripts get an AI cleanup pass before pasting. */
+  cleanupEnabled: boolean
   /** Latest problem worth showing, cleared after the next successful dictation. */
   error: string | null
 }
 
 export interface HistoryEntry {
   id: string
+  /** What was pasted (cleaned up when cleanup is on). */
   text: string
+  /** The transcript before cleanup, when cleanup changed it. */
+  rawText?: string
+  /** App it was dictated into, e.g. "Slack". */
+  app?: string
   /** ISO timestamp. */
   createdAt: string
   durationSeconds: number
@@ -36,6 +43,7 @@ export interface BreakFlowApi {
   clearHistory(): Promise<void>
   copyText(text: string): Promise<void>
   setHotkey(hotkey: HotkeyName): Promise<void>
+  setCleanupEnabled(enabled: boolean): Promise<void>
   saveApiKey(key: string): Promise<{ ok: true } | { ok: false; error: string }>
   removeApiKey(): Promise<void>
   requestMicrophone(): Promise<void>
