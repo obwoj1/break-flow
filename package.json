@@ -1,0 +1,35 @@
+{
+  "name": "break-flow",
+  "productName": "Break Flow",
+  "version": "0.2.0",
+  "description": "Hold a key, talk, and your words get typed anywhere.",
+  "author": "Oba Wojuade",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "helper:build": "cd helper && swift build -c release --build-system native 2>&1 | grep -v 'has been deprecated'",
+    "dev": "npm run helper:build && electron-vite dev",
+    "build": "npm run helper:build && electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "package": "npm run build && electron-builder --dir && node scripts/sign-app.mjs",
+    "install-app": "npm run package && node scripts/install-app.mjs",
+    "postinstall": "install-electron"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^45.2.0",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
+}
