@@ -2,12 +2,12 @@ import AppKit
 
 /// The menu bar app. Wires the hotkey, the recorder and the paster together.
 ///
-/// Stage 1 flow: hold the hotkey → record → let go → paste a test line saying how long you talked.
-/// Stage 2 swaps that test line for the real transcript.
+/// Flow: hold the hotkey → record → let go → transcribe with OpenAI → paste the text.
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private enum State {
         case idle
         case recording
+        case transcribing
     }
 
     /// Holds shorter than this are treated as accidental taps and thrown away.
@@ -55,6 +55,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func startRecording() {
         guard state == .idle else { return }
+        guard apiKey != nil else {
+            lastMessage = "Add your OpenAI API key first"
+            NSSound.beep()
+            promptForAPIKey()
+            return
+        }
         guard AudioRecorder.hasPermission else {
             lastMessage = "Microphone access needed"
             NSSound.beep()
@@ -72,18 +78,77 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func finishRecording() {
         guard state == .recording else { return }
-        state = .idle
-        guard let recording = recorder.stop() else { return }
-        defer { try? FileManager.default.removeItem(at: recording.url) }
+        guard let recording = recorder.stop() else {
+            state = .idle
+            return
+        }
 
-        guard recording.duration >= Self.minimumHold else {
+        guard recording.duration >= Self.minimumHold, let apiKey else {
+            try? FileManager.default.removeItem(at: recording.url)
+            state = .idle
             lastMessage = "Too short — hold the key while you talk"
             return
         }
 
-        let seconds = String(format: "%.1f", recording.duration)
-        Paster.paste("Break Flow works! (recorded \(seconds)s)")
-        lastMessage = "Last recording: \(seconds)s"
+        state = .transcribing
+        Task {
+            let result: Result<String, Error>
+            do {
+                result = .success(try await Transcriber(apiKey: apiKey).transcribe(recording.url))
+            } catch {
+                result = .failure(error)
+            }
+            try? FileManager.default.removeItem(at: recording.url)
+            await MainActor.run { self.handleTranscription(result, duration: recording.duration) }
+        }
+    }
+
+    private func handleTranscription(_ result: Result<String, Error>, duration: TimeInterval) {
+        state = .idle
+        switch result {
+        case .success(let text) where text.isEmpty:
+            lastMessage = "Didn't catch any words"
+        case .success(let text):
+            Paster.paste(text)
+            lastMessage = "Typed \(text.split(separator: " ").count) words from \(String(format: "%.1f", duration))s"
+        case .failure(let error):
+            lastMessage = error.localizedDescription
+            NSSound.beep()
+            if case TranscriptionError.invalidKey = error {
+                promptForAPIKey()
+            }
+        }
+    }
+
+    // MARK: - API key
+
+    private var apiKey: String? {
+        KeychainStore.read(Transcriber.apiKeyAccount)
+    }
+
+    private func promptForAPIKey() {
+        let alert = NSAlert()
+        alert.messageText = "OpenAI API key"
+        alert.informativeText = "Break Flow sends your recordings to OpenAI to turn them into text. "
+            + "Paste a key from platform.openai.com/api-keys. It's stored in your Mac's Keychain."
+        let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        field.placeholderString = "sk-..."
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.window.initialFirstResponder = field
+
+        NSApp.activate(ignoringOtherApps: true) // menu bar apps don't come to the front on their own
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let key = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return }
+        if KeychainStore.save(key, for: Transcriber.apiKeyAccount) {
+            lastMessage = "API key saved — hold \(hotkey.title) to talk"
+        } else {
+            lastMessage = "Couldn't save the API key to Keychain"
+            NSSound.beep()
+        }
     }
 
     // MARK: - Accessibility
@@ -104,14 +169,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateIcon() {
         guard let button = statusItem?.button else { return }
-        let recording = state == .recording
-        let image = NSImage(
-            systemSymbolName: recording ? "mic.fill" : "waveform",
-            accessibilityDescription: recording ? "Break Flow — recording" : "Break Flow"
-        )
-        image?.isTemplate = !recording
-        button.image = image
-        button.contentTintColor = recording ? .systemRed : nil
+        let symbol: String
+        let description: String
+        switch state {
+        case .idle: (symbol, description) = ("waveform", "Break Flow")
+        case .recording: (symbol, description) = ("mic.fill", "Break Flow — recording")
+        case .transcribing: (symbol, description) = ("ellipsis.circle", "Break Flow — transcribing")
+        }
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
+        button.contentTintColor = state == .recording ? .systemRed : nil
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -126,6 +192,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         if !AudioRecorder.hasPermission {
             menu.addItem(actionItem("⚠️ Grant Microphone access…", #selector(openMicrophone)))
+        }
+        if apiKey == nil {
+            menu.addItem(actionItem("⚠️ Add OpenAI API key…", #selector(setAPIKey)))
+        } else {
+            menu.addItem(actionItem("Change OpenAI API key…", #selector(setAPIKey)))
         }
 
         let hotkeyItem = NSMenuItem(title: "Hotkey", action: nil, keyEquivalent: "")
@@ -158,6 +229,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func chooseHotkey(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let choice = Hotkey(rawValue: raw) else { return }
         hotkey = choice
+    }
+
+    @objc private func setAPIKey() {
+        promptForAPIKey()
     }
 
     @objc private func openAccessibility() {
