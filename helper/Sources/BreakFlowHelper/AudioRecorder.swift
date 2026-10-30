@@ -74,20 +74,7 @@ final class AudioRecorder {
         return Recording(url: writer.url, duration: Date().timeIntervalSince(startedAt))
     }
 
-    /// Asks macOS for microphone access (shows the system prompt the first time).
-    static func requestPermission(_ completion: @escaping (Bool) -> Void) {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            completion(true)
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .audio) { granted in
-                DispatchQueue.main.async { completion(granted) }
-            }
-        default:
-            completion(false)
-        }
-    }
-
+    /// Microphone access is requested from Electron; the helper only checks it.
     static var hasPermission: Bool {
         AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
