@@ -1,0 +1,78 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+body {
+  display: grid;
+  place-items: center;
+}
+
+.pill {
+  width: 112px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgb(17 17 19 / 0.92);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  display: grid;
+  place-items: center;
+}
+
+.bars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+}
+
+.bars span {
+  display: block;
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: #ffffff;
+  transform: scaleY(0.15);
+}
+
+.dots {
+  display: none;
+  gap: 5px;
+}
+
+.dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffffff;
+  animation: blink 1s infinite ease-in-out;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.pill[data-status='transcribing'] .bars {
+  display: none;
+}
+
+.pill[data-status='transcribing'] .dots {
+  display: flex;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
