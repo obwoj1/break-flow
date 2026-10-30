@@ -20,16 +20,11 @@ export class History {
     return this.entries
   }
 
-  add(text: string, durationSeconds: number): HistoryEntry {
-    const entry: HistoryEntry = {
-      id: randomUUID(),
-      text,
-      createdAt: new Date().toISOString(),
-      durationSeconds,
-    }
-    this.entries = [entry, ...this.entries].slice(0, MAX_ENTRIES)
+  add(entry: Omit<HistoryEntry, 'id' | 'createdAt'>): HistoryEntry {
+    const saved: HistoryEntry = { id: randomUUID(), createdAt: new Date().toISOString(), ...entry }
+    this.entries = [saved, ...this.entries].slice(0, MAX_ENTRIES)
     this.save()
-    return entry
+    return saved
   }
 
   remove(id: string): void {
