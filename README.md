@@ -1,66 +1,99 @@
 # Break Flow
 
 Hold a key, talk, let go — your words get typed into whatever app you're in.
-A personal take on Wispr Flow, built as a native Swift menu bar app for macOS 13+.
+A personal take on Wispr Flow for macOS 13+: an **Electron** app with a small **Swift helper**.
 
-> **Status: Stage 2 — real speech-to-text** via OpenAI (`gpt-transcribe`). Next up: AI cleanup
-> of filler words and punctuation. See [CONTEXT.md](CONTEXT.md) for the roadmap and decisions.
+> **Status:** voice → text with OpenAI (`gpt-transcribe`), app window with setup, history and
+> settings, menu bar icon. Next up: AI cleanup of filler words and punctuation.
+> See [CONTEXT.md](CONTEXT.md) for the roadmap and decisions.
 
-## Run it
+## Install it
 
-Needs the Xcode Command Line Tools (Swift 5.9+). No Xcode required.
+Needs Node 24 (`nvm use` picks it up from `.nvmrc`) and the Xcode Command Line Tools.
 
 ```bash
-scripts/run.sh
+nvm use
+npm install
+npm run install-app
 ```
 
-That builds `build/Break Flow.app`, launches it, and puts a waveform icon in your menu bar.
+That builds everything, puts **Break Flow** in `/Applications`, and opens it. After that it's a
+normal app: Spotlight, Dock, or the waveform icon in the menu bar.
 
-### First launch: two permissions and an API key
+### First launch
 
-1. **Microphone** — macOS asks right away. Click Allow.
-2. **Accessibility** — macOS shows a prompt; click *Open System Settings* and switch on
-   **Break Flow**. This lets it see the hotkey in other apps and press Cmd+V for you.
-3. **OpenAI API key** — menu bar icon → *Add OpenAI API key…*, paste a key from
-   [platform.openai.com/api-keys](https://platform.openai.com/api-keys). It's saved in your
-   Mac's Keychain, never in a file. If macOS asks whether Break Flow may use the Keychain item,
-   click *Always Allow*.
+The window walks you through three steps:
 
-The menu bar menu shows ⚠️ items for anything still missing.
+1. **Microphone** → *Allow*.
+2. **Accessibility** → *Open Settings* → switch on **Break Flow**. This lets it see the hotkey in
+   other apps and press Cmd+V for you. The window ticks it off by itself.
+3. **OpenAI API key** → paste a key from
+   [platform.openai.com/api-keys](https://platform.openai.com/api-keys). It's checked with OpenAI,
+   then encrypted with your Mac's Keychain.
 
 ## Use it
 
 1. Click into any text box (Notes, a browser, Messages).
-2. **Hold Fn (🌐)**, talk, let go. The icon is a red mic while you hold, then `…` while OpenAI
-   transcribes (usually a second or two).
-3. Your words get typed where the cursor is. The menu shows how many words it typed, or the
-   error if something went wrong.
+2. **Hold Fn (🌐)**, talk, let go. The menu bar icon shows a mic while you hold, then `…` while
+   OpenAI transcribes (usually a second or two).
+3. Your words get typed where the cursor is, and saved to **History** in the window.
 
-**Privacy & cost:** recordings are sent to OpenAI for transcription, then deleted from your Mac.
-OpenAI bills per minute of audio (about a cent a minute).
+Closing the window keeps Break Flow running in the menu bar; quit from the menu bar icon or ⌘Q.
 
-If Fn opens the emoji picker or Apple Dictation instead, either set
-*System Settings → Keyboard → Press 🌐 key to → Do Nothing*, or switch the hotkey to
-**Right Option** from the menu bar menu.
+If Fn opens the emoji picker, set *System Settings → Keyboard → Press 🌐 key to → Do Nothing*,
+or switch the hotkey to **Right Option** in Settings.
 
-## Rebuilding
+**Privacy & cost:** recordings go to OpenAI and are deleted from your Mac as soon as the text comes
+back. Transcripts stay in `~/Library/Application Support/Break Flow/history.json`. OpenAI bills
+per minute of audio (about a cent a minute).
 
-Run `scripts/run.sh` again after changes. Because builds aren't signed with a certificate, macOS
-treats each one as a new app, so the script clears the old Accessibility grant and you'll be asked
-to switch it on again (and may be asked to allow Keychain access again). Use `scripts/run.sh --keep-perms` to skip the reset.
+## Develop
 
-## Project layout
-
-| File | What it does |
+| Command | What it does |
 |---|---|
-| `Sources/BreakFlow/main.swift` | Starts the app as menu-bar-only (no Dock icon) |
-| `Sources/BreakFlow/AppDelegate.swift` | Menu bar icon + menu; ties hotkey → recorder → paster together |
-| `Sources/BreakFlow/HotkeyMonitor.swift` | Notices when you press and release Fn / Right Option anywhere |
-| `Sources/BreakFlow/AudioRecorder.swift` | Records the mic to a temp 16 kHz mono WAV while you hold the key |
-| `Sources/BreakFlow/Transcriber.swift` | Uploads the recording to OpenAI and gets the text back |
-| `Sources/BreakFlow/KeychainStore.swift` | Saves the API key in the macOS Keychain |
-| `Sources/BreakFlow/Paster.swift` | Types text via clipboard + Cmd+V, then puts your old clipboard back |
-| `Sources/BreakFlow/Permissions.swift` | Checks Accessibility and opens the right System Settings pane |
-| `Resources/Info.plist` | App identity, menu-bar-only flag, microphone prompt text |
-| `scripts/build-app.sh` | Builds and wraps the binary into a signed `.app` |
-| `scripts/run.sh` | Rebuild + relaunch |
+| `npm run dev` | Builds the helper, runs the app with hot reload |
+| `npm run typecheck` | TypeScript check |
+| `npm run package` | Builds `dist/mac-arm64/Break Flow.app` (signed ad hoc) |
+| `npm run install-app` | Package + copy to `/Applications` + launch |
+
+**Permissions in dev mode:** macOS gives permissions to whichever app *launched* the process. With
+`npm run dev` that's your terminal (Warp, VS Code…), so switch on Accessibility for the terminal
+instead. The installed app asks for itself.
+
+**After each reinstall** macOS treats the app as new (no signing certificate yet), so
+`install-app` clears the old Accessibility grant and you switch it on again. Use
+`node scripts/install-app.mjs --keep-perms` to skip the reset.
+
+## How it fits together
+
+```
+ you hold Fn
+     │
+┌────▼──────────────── Swift helper (helper/) ───────────────────┐
+│ HotkeyMonitor → AudioRecorder (16 kHz WAV) ─┐       Paster ◄─┐ │
+└─────────────────────────────────────────────┼────────────────┼─┘
+                       JSON lines over stdio  │                │
+┌─────────────────── Electron main (src/main) ▼────────────────┼─┐
+│ HelperProcess → Dictation → transcriber (OpenAI) → "paste" ──┘ │
+│                     │  → History, Settings (safeStorage)       │
+└─────────────────────┼──────────────────────────────────────────┘
+                      │ IPC (preload: window.breakFlow)
+               React window (src/renderer) + menu bar tray
+```
+
+| Path | What it does |
+|---|---|
+| `helper/Sources/BreakFlowHelper/Helper.swift` | Native coordinator: hotkey → record → report; runs paste commands |
+| `helper/.../Bridge.swift` | JSON-lines channel to Electron over stdin/stdout |
+| `helper/.../HotkeyMonitor.swift` | Notices Fn / Right Option press and release in any app |
+| `helper/.../AudioRecorder.swift` | Records the mic to a temp 16 kHz mono WAV |
+| `helper/.../Paster.swift` | Types text via clipboard + Cmd+V, then restores your clipboard |
+| `src/main/index.ts` | App startup, window, IPC handlers, permission requests |
+| `src/main/helper.ts` | Starts the Swift helper, parses its events, restarts it on crash |
+| `src/main/dictation.ts` | The record → transcribe → paste loop and app state |
+| `src/main/transcriber.ts` | OpenAI upload + API key check |
+| `src/main/settings.ts` / `history.ts` | Hotkey + encrypted key / past transcripts, as JSON in Application Support |
+| `src/main/tray.ts` | Menu bar icon and menu |
+| `src/preload/index.ts` | The only functions the window can call (`window.breakFlow`) |
+| `src/renderer/` | React UI: Home (setup + status), History, Settings |
+| `scripts/` | Tray icon generator, ad hoc signing, install to /Applications |
