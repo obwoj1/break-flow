@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "BreakFlow",
+    name: "BreakFlowHelper",
     platforms: [.macOS(.v13)],
     targets: [
-        .executableTarget(name: "BreakFlow", path: "Sources/BreakFlow")
+        .executableTarget(name: "BreakFlowHelper", path: "Sources/BreakFlowHelper")
     ]
 )
