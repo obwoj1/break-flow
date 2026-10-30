@@ -420,6 +420,11 @@ kbd {
   gap: 12px;
 }
 
+.history-text.original {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .empty {
   color: var(--muted);
   padding: 12px 0 4px;
@@ -435,4 +440,64 @@ kbd {
   .choices {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- Switch ---------- */
+
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 24px;
+}
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+.switch span[aria-hidden] {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.15s;
+  pointer-events: none;
+}
+
+.switch span[aria-hidden]::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  transition: transform 0.15s;
+}
+
+.switch input:checked + span[aria-hidden] {
+  background: var(--success);
+}
+
+.switch input:checked + span[aria-hidden]::after {
+  transform: translateX(16px);
+}
+
+.switch input:focus-visible + span[aria-hidden] {
+  outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
