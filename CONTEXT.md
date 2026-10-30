@@ -41,8 +41,21 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
 ## Status
 
 - 2026-10-30: Repo created at `~/Developer/break-flow`. Stage 1 being written.
+- 2026-10-30: **Stage 1 code complete.** Builds clean, `.app` launches and stays running (no crash).
+  **Not yet tested by Oba**: the hold-Fn → paste flow, both permission prompts, Right Option.
+  Next: Oba tests Stage 1; then pick the speech-to-text provider for Stage 2.
+
+## Open questions
+
+- Stage 2 speech-to-text: OpenAI API (simple, paid per minute), Deepgram (fast streaming), or
+  whisper.cpp (free, offline, runs on the Mac)?
+- Put the repo on GitHub (private) now or later?
 
 ## Known issues
+
+- **`swift build` fails with the default build system** in Command Line Tools 26
+  ("spec ':wrapper.xcdatamodel' already registered"). Workaround: `--build-system native`,
+  which the scripts already pass. It prints a deprecation warning; harmless.
 
 - **Accessibility permission resets on every rebuild** (ad-hoc signing changes the app's identity).
   `scripts/run.sh` resets the old grant so macOS asks again cleanly. A real fix is a self-signed
