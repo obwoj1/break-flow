@@ -3,8 +3,9 @@
 Hold a key, talk, let go — your words get typed into whatever app you're in.
 A personal take on Wispr Flow for macOS 13+: an **Electron** app with a small **Swift helper**.
 
-> **Status:** voice → text with OpenAI (`gpt-transcribe`), app window with setup, history and
-> settings, menu bar icon. Next up: AI cleanup of filler words and punctuation.
+> **Status (v0.3.0):** voice → text with OpenAI (`gpt-transcribe`), AI cleanup (`gpt-6-luna`)
+> that removes "um"s and applies self-corrections, a floating pill with live sound bars while you
+> talk, an app window with setup, history and settings, and a menu bar icon.
 > See [CONTEXT.md](CONTEXT.md) for the roadmap and decisions.
 
 ## Install it
@@ -14,6 +15,7 @@ Needs Node 24 (`nvm use` picks it up from `.nvmrc`) and the Xcode Command Line T
 ```bash
 nvm use
 npm install
+scripts/setup-signing.sh   # once per Mac — see "Signing" below
 npm run install-app
 ```
 
@@ -34,9 +36,14 @@ The window walks you through three steps:
 ## Use it
 
 1. Click into any text box (Notes, a browser, Messages).
-2. **Hold Fn (🌐)**, talk, let go. The menu bar icon shows a mic while you hold, then `…` while
-   OpenAI transcribes (usually a second or two).
-3. Your words get typed where the cursor is, and saved to **History** in the window.
+2. **Hold Fn (🌐)**, talk, let go. A small pill at the bottom of the screen shows sound bars while
+   you talk, then dots while OpenAI transcribes and cleans up (usually a second or two).
+3. Your words get typed where the cursor is, and saved to **History** in the window. History
+   shows which app you dictated into and lets you flip between the cleaned and original text.
+
+**AI cleanup** (on by default, switch in Settings) removes filler words and false starts, fixes
+punctuation, applies "at 3 — no, 4" corrections, and adjusts to the app (casual in chat, exact in
+code editors). If cleanup is slow or fails, your raw words are pasted instead.
 
 Closing the window keeps Break Flow running in the menu bar; quit from the menu bar icon or ⌘Q.
 
@@ -44,8 +51,9 @@ If Fn opens the emoji picker, set *System Settings → Keyboard → Press 🌐 k
 or switch the hotkey to **Right Option** in Settings.
 
 **Privacy & cost:** recordings go to OpenAI and are deleted from your Mac as soon as the text comes
-back. Transcripts stay in `~/Library/Application Support/Break Flow/history.json`. OpenAI bills
-per minute of audio (about a cent a minute).
+back. With cleanup on, the transcript and the app name go to OpenAI too (`store: false`).
+Transcripts stay in `~/Library/Application Support/Break Flow/history.json`. Transcription is
+about a cent a minute; cleanup costs a tiny fraction of that.
 
 ## Develop
 
@@ -60,9 +68,18 @@ per minute of audio (about a cent a minute).
 `npm run dev` that's your terminal (Warp, VS Code…), so switch on Accessibility for the terminal
 instead. The installed app asks for itself.
 
-**After each reinstall** macOS treats the app as new (no signing certificate yet), so
-`install-app` clears the old Accessibility grant and you switch it on again. Use
-`node scripts/install-app.mjs --keep-perms` to skip the reset.
+### Signing
+
+`scripts/setup-signing.sh` creates a self-signed **Break Flow Dev** certificate in its own keychain
+(`~/Library/Keychains/break-flow-dev.keychain-db`, password in `~/.config/break-flow/`). Every build
+is signed with it, so macOS sees the same app each time: Accessibility stays on and Electron's
+Keychain item doesn't prompt after each reinstall.
+
+Without it, builds are signed ad hoc, which looks like a brand-new app to macOS every time —
+`install-app` then clears the stale Accessibility grant, and a Keychain prompt appears on launch
+(the app is frozen until you answer it).
+
+Undo: `security delete-keychain ~/Library/Keychains/break-flow-dev.keychain-db && rm -r ~/.config/break-flow`.
 
 ## How it fits together
 
@@ -92,8 +109,10 @@ instead. The installed app asks for itself.
 | `src/main/helper.ts` | Starts the Swift helper, parses its events, restarts it on crash |
 | `src/main/dictation.ts` | The record → transcribe → paste loop and app state |
 | `src/main/transcriber.ts` | OpenAI upload + API key check |
+| `src/main/cleaner.ts` | AI cleanup with `gpt-6-luna`, timeout and fallback guard |
+| `src/main/overlay.ts` | The floating recording pill window (never takes focus) |
 | `src/main/settings.ts` / `history.ts` | Hotkey + encrypted key / past transcripts, as JSON in Application Support |
 | `src/main/tray.ts` | Menu bar icon and menu |
 | `src/preload/index.ts` | The only functions the window can call (`window.breakFlow`) |
-| `src/renderer/` | React UI: Home (setup + status), History, Settings |
-| `scripts/` | Tray icon generator, ad hoc signing, install to /Applications |
+| `src/renderer/` | React UI: Home (setup + status), History, Settings; `overlay/` is the pill |
+| `scripts/` | Signing setup + signing, install to /Applications, tray icon generator |
