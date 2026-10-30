@@ -3,6 +3,7 @@
 Our own take on Wispr Flow: hold a key, talk, and clean text gets typed into whatever app you're in.
 
 Started 2026-10-30. Owner: Oba (obwoj1).
+GitHub (private): https://github.com/obwoj1/break-flow
 
 ## Where the idea came from
 
@@ -50,6 +51,7 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
   1.5 s mic test: valid WAVE, 1 ch, 16 kHz). Transcriber verified against the live API with a
   fake key (got the expected 401 → "OpenAI rejected the API key"). **Not yet tested with a real
   key** — Oba adds his key via the menu and tests.
+- 2026-10-30: Pushed to private GitHub repo `obwoj1/break-flow` (branch `main`).
 
 ## Stage 2 details
 
