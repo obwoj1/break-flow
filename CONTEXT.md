@@ -29,9 +29,9 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
 
 ## Roadmap
 
-1. **Stage 1 — Skeleton** (in progress): menu bar app, hold hotkey → record mic → on release paste a
+1. **Stage 1 — Skeleton** (done): menu bar app, hold hotkey → record mic → on release paste a
    fixed test string. Proves hotkey, mic, and paste all work.
-2. **Stage 2 — Speech to text**: send the recording to a transcription API (OpenAI or Deepgram), or
+2. **Stage 2 — Speech to text** (done, OpenAI `gpt-transcribe`): send the recording to a transcription API, or
    whisper.cpp for offline. Paste the real transcript.
 3. **Stage 3 — Cleanup**: one Claude Haiku call that removes filler words, fixes punctuation, handles
    "actually I meant…", using the focused text box as context.
@@ -45,11 +45,26 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
   **Not yet tested by Oba**: the hold-Fn → paste flow, both permission prompts, Right Option.
   Next: Oba tests Stage 1; then pick the speech-to-text provider for Stage 2.
 
+- 2026-10-30: Oba chose **OpenAI** for speech-to-text and a **private GitHub repo**.
+- 2026-10-30: **Stage 2 code complete.** Recorder now writes 16 kHz mono WAV (verified with a
+  1.5 s mic test: valid WAVE, 1 ch, 16 kHz). Transcriber verified against the live API with a
+  fake key (got the expected 401 → "OpenAI rejected the API key"). **Not yet tested with a real
+  key** — Oba adds his key via the menu and tests.
+
+## Stage 2 details
+
+- Model: **`gpt-transcribe`** — OpenAI's recommended transcription model per their docs on
+  2026-10-30. `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` are deprecated, accepted
+  until 2027-02-26. Note: `gpt-transcribe` takes `languages` (array) + `keywords`, not `language`.
+  `keywords` is the hook for a custom dictionary later.
+- Upload: one multipart POST to `/v1/audio/transcriptions` after you let go (no streaming yet).
+  Limit 25 MB ≈ 13 min of our WAV.
+- API key: macOS Keychain, service `com.obwoj1.breakflow`, account `openai-api-key`. Never on disk.
+- Recordings are deleted right after transcription (success or failure).
+
 ## Open questions
 
-- Stage 2 speech-to-text: OpenAI API (simple, paid per minute), Deepgram (fast streaming), or
-  whisper.cpp (free, offline, runs on the Mac)?
-- Put the repo on GitHub (private) now or later?
+- Stage 3 cleanup: Claude Haiku (needs an Anthropic key) or an OpenAI model (reuses the same key)?
 
 ## Known issues
 
