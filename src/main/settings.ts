@@ -5,11 +5,12 @@ import type { HotkeyName } from '../shared/types'
 
 interface StoredSettings {
   hotkey: HotkeyName
+  cleanupEnabled: boolean
   /** The OpenAI key, encrypted with macOS Keychain-backed safeStorage, base64. */
   encryptedApiKey?: string
 }
 
-const defaults: StoredSettings = { hotkey: 'fn' }
+const defaults: StoredSettings = { hotkey: 'fn', cleanupEnabled: true }
 
 /**
  * Settings saved to ~/Library/Application Support/Break Flow/settings.json.
@@ -29,6 +30,15 @@ export class Settings {
 
   set hotkey(value: HotkeyName) {
     this.data.hotkey = value
+    this.save()
+  }
+
+  get cleanupEnabled(): boolean {
+    return this.data.cleanupEnabled
+  }
+
+  set cleanupEnabled(value: boolean) {
+    this.data.cleanupEnabled = value
     this.save()
   }
 
@@ -65,6 +75,7 @@ export class Settings {
         ...defaults,
         ...parsed,
         hotkey: parsed.hotkey === 'rightOption' ? 'rightOption' : 'fn',
+        cleanupEnabled: parsed.cleanupEnabled !== false,
       }
     } catch {
       return { ...defaults }
