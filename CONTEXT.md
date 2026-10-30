@@ -29,6 +29,11 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
 | 2026-10-30 | OpenAI calls, settings, history live in **Electron main** | Helper stays OS-only. API key moved from Swift Keychain code to Electron `safeStorage` (Keychain-backed). |
 | 2026-10-30 | Recording **disabled until an API key is saved**; key **verified with OpenAI before saving** | Never record audio we can't use; catch typos immediately. |
 | 2026-10-30 | **Swift Package Manager** for the helper, no Xcode project | Only Command Line Tools are installed. |
+| 2026-10-30 | Stage 3 cleanup uses **OpenAI `gpt-6-luna`** (Responses API, `reasoning: none`, `store: false`) | Oba said "keep working" without choosing; OpenAI reuses his key. Luna is OpenAI's cheapest/fastest text model ($0.10/$0.50 per MTok). Easy to swap for Claude Haiku later. |
+| 2026-10-30 | Cleanup is **best-effort**: 6 s timeout, and a result >1.4× the raw length counts as "answered instead of cleaned" → paste raw | Dictation must never break or paste something you didn't say because of the AI step. |
+| 2026-10-30 | Helper reports the **frontmost app** with each recording | Cleanup adapts tone (chat vs email vs code); History shows where you dictated. |
+| 2026-10-30 | **Floating pill** = separate non-focusable `type: 'panel'` window, `showInactive()`, ignores mouse | Must never steal focus, or the paste lands in the wrong place. |
+| 2026-10-30 | **Self-signed "Break Flow Dev" cert** in its own keychain (`scripts/setup-signing.sh`) | Ad hoc builds froze on launch behind a Keychain prompt and reset Accessibility every install. Own keychain + stored password so codesign works without Oba's login password. |
 | 2026-10-30 | Default hotkey **Fn**, with **Right Option** as an alternative | Fn matches Wispr. Fn can trigger the emoji picker / Apple dictation, so Right Option is the escape hatch. |
 | 2026-10-30 | **Ad-hoc code signing** for now | No signing certificate on this Mac. Downside: macOS forgets the Accessibility grant after each rebuild (see "Known issues"). |
 | 2026-10-30 | Build in **checkpoints** — stop after each stage so Oba can test | Oba's preference. |
@@ -63,6 +68,19 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
   protocol); sandbox has no `require`; fake key rejected through the UI API and nothing saved.
   Installed to `/Applications/Break Flow.app` (replaced the Swift-only version, same bundle id).
   **Not yet tested by Oba**: real key, hold-Fn dictation end to end, tray menu, Right Option.
+- 2026-10-30: Oba said "keep working". Built **Stage 3 (AI cleanup)** and the **recording pill**
+  (v0.3.0). Verified: typecheck/build clean; cleaner fails safely in ~0.4 s with a bad key; pill
+  rendered offscreen in both states (screenshots looked right); mic level events ~10/s.
+- 2026-10-30: **Bug found & fixed — app froze on launch after reinstalls.** Cause: each ad hoc
+  build has a new signature, so Electron's "Break Flow Safe Storage" Keychain item prompted for
+  access; the prompt blocked the main process before the helper was spawned, and blocked quitting
+  (AppleScript quit got "User canceled"). install-app's `open` then re-activated the stuck old copy.
+  Fixes: Break Flow Dev certificate (stable identity), helper spawned before settings are read,
+  install-app waits for the old copy to exit (force-kills after 5 s) and only resets Accessibility
+  when the signer changes.
+- 2026-10-30: Oba **had already saved an API key** (settings.json, 17:21) — kept; the Keychain item
+  was NOT deleted. First launch of the cert-signed build asks for Keychain access once
+  (**Always Allow**), and Accessibility must be switched on once more. After that both persist.
 
 ## Helper ↔ Electron protocol
 
@@ -84,9 +102,17 @@ Events (helper → Electron): `ready`/`status {accessibility, microphone, record
   `~/Library/Application Support/Break Flow/settings.json` (mode 600). Never stored in plain text.
 - Recordings are deleted right after transcription (success or failure).
 
+## Next ideas (Stage 4 remainder)
+
+- Custom dictionary → `keywords` on `gpt-transcribe` (names, jargon).
+- Streaming transcription while you talk (lower latency).
+- Read the focused text box via Accessibility for richer cleanup context (what Wispr does).
+- Real app icon (still the default Electron icon).
+- `safeStorage.isEncryptionAvailable` is deprecated in Electron 45 → move to the async API.
+
 ## Open questions
 
-- Stage 3 cleanup: Claude Haiku (needs an Anthropic key) or an OpenAI model (reuses the same key)?
+- Keep OpenAI for cleanup, or switch to Claude Haiku? (Defaulted to OpenAI on 2026-10-30.)
 
 ## Known issues
 
@@ -94,9 +120,8 @@ Events (helper → Electron): `ready`/`status {accessibility, microphone, record
   ("spec ':wrapper.xcdatamodel' already registered"). Workaround: `--build-system native`,
   which the scripts already pass. It prints a deprecation warning; harmless.
 
-- **Accessibility permission resets on every reinstall** (ad-hoc signing changes the app's identity).
-  `scripts/install-app.mjs` resets the old grant so macOS asks again cleanly. A real fix is a
-  self-signed "Break Flow Dev" certificate — later.
+- **Without the dev certificate**, every build is a "new app" to macOS: Accessibility resets and a
+  Keychain prompt freezes launch. Run `scripts/setup-signing.sh` once per Mac.
 - **Dev mode permissions go to the terminal** that ran `npm run dev`, not to Break Flow.
 - **npm 11 blocks install scripts** by default, so Electron's binary isn't downloaded on install;
   the `postinstall` script runs `install-electron` to fix that.
