@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import type { BreakFlowApi } from '../../shared/types'
 
 declare global {
