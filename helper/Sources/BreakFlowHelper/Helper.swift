@@ -12,6 +12,7 @@ import AppKit
 ///   ready / status        {accessibility, microphone, recording}
 ///   accessibility         {trusted}           — sent when the grant changes
 ///   recording-started
+///   level                 {value}             — mic loudness 0–1, ~10–20×/s while recording
 ///   recording-finished    {path, duration, app?} — Electron transcribes, then deletes the file.
 ///                                              `app` is the app you were dictating into.
 ///   recording-discarded   {reason}            — e.g. "too-short"
@@ -37,6 +38,10 @@ final class Helper {
     func start() {
         hotkeyMonitor.onPress = { [weak self] in self?.startRecording() }
         hotkeyMonitor.onRelease = { [weak self] in self?.finishRecording() }
+        recorder.onLevel = { [weak self] level in
+            // Rounded to keep the JSON lines short; the pill only needs a rough level.
+            self?.bridge.send("level", ["value": (level * 100).rounded() / 100])
+        }
         hotkeyMonitor.start()
 
         bridge.onCommand = { [weak self] name, payload in self?.handle(name, payload) }
