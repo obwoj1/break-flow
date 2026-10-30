@@ -27,6 +27,11 @@ final class AudioRecorder {
         AVLinearPCMIsBigEndianKey: false,
     ]
 
+    /// Called ~10–20 times a second (macOS delivers ~100 ms chunks) while recording with the mic level (0–1), on an audio thread.
+    var onLevel: ((Float) -> Void)?
+
+    private static let levelInterval: TimeInterval = 0.05
+
     private let engine = AVAudioEngine()
     private var writer: ChunkWriter?
     private var startedAt: Date?
@@ -47,8 +52,14 @@ final class AudioRecorder {
         let writer = try ChunkWriter(url: url, inputFormat: inputFormat)
         self.writer = writer
 
-        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
+        var lastLevelAt = Date.distantPast
+        input.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
             writer.append(buffer)
+            let now = Date()
+            if now.timeIntervalSince(lastLevelAt) >= Self.levelInterval, let onLevel = self?.onLevel {
+                lastLevelAt = now
+                onLevel(Self.level(of: buffer))
+            }
         }
         engine.prepare()
         do {
@@ -72,6 +83,18 @@ final class AudioRecorder {
         self.startedAt = nil
         self.writer = nil
         return Recording(url: writer.url, duration: Date().timeIntervalSince(startedAt))
+    }
+
+    /// Loudness of a chunk as 0–1: RMS of the first channel, mapped from about -50 dB…0 dB.
+    private static func level(of buffer: AVAudioPCMBuffer) -> Float {
+        guard let samples = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return 0 }
+        var sum: Float = 0
+        for index in 0..<Int(buffer.frameLength) {
+            sum += samples[index] * samples[index]
+        }
+        let rms = (sum / Float(buffer.frameLength)).squareRoot()
+        let decibels = 20 * log10(max(rms, 0.000_01))
+        return min(max((decibels + 50) / 50, 0), 1)
     }
 
     /// Microphone access is requested from Electron; the helper only checks it.
