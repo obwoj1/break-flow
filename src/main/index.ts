@@ -4,6 +4,7 @@ import type { HotkeyName } from '../shared/types'
 import { Dictation } from './dictation'
 import { HelperProcess } from './helper'
 import { History } from './history'
+import { Overlay } from './overlay'
 import { Settings } from './settings'
 import { verifyApiKey } from './transcriber'
 import { AppTray } from './tray'
@@ -32,10 +33,14 @@ function start(): void {
     setHotkey: (hotkey) => dictation.setHotkey(hotkey),
   })
 
+  const overlay = new Overlay()
+
   dictation.on('state', (state) => {
     tray.update(state)
+    overlay.setStatus(state.status)
     mainWindow?.webContents.send('state', state)
   })
+  dictation.on('level', (level: number) => overlay.setLevel(level))
   dictation.on('history', () => mainWindow?.webContents.send('history', history.list()))
   dictation.on('needs-attention', showWindow)
 
