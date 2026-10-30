@@ -5,10 +5,12 @@ import type { AppState, DictationStatus, HotkeyName } from '../shared/types'
 import type { HelperEvent, HelperProcess } from './helper'
 import type { History } from './history'
 import type { Settings } from './settings'
+import { cleanUp } from './cleaner'
 import { transcribe, TranscriptionError } from './transcriber'
 
 /**
- * Runs the dictation loop: the helper records → we transcribe with OpenAI → the helper pastes.
+ * Runs the dictation loop: the helper records → we transcribe with OpenAI → optionally clean the
+ * text up → the helper pastes.
  *
  * Emits:
  *   'state'            AppState — whenever anything the UI shows changes
@@ -44,6 +46,7 @@ export class Dictation extends EventEmitter {
       accessibility: systemPreferences.isTrustedAccessibilityClient(false),
       hasApiKey: this.settings.hasApiKey,
       hotkey: this.settings.hotkey,
+      cleanupEnabled: this.settings.cleanupEnabled,
       error: this.error,
     }
   }
@@ -55,6 +58,11 @@ export class Dictation extends EventEmitter {
   setHotkey(hotkey: HotkeyName): void {
     this.settings.hotkey = hotkey
     this.configureHelper()
+    this.emitState()
+  }
+
+  setCleanupEnabled(enabled: boolean): void {
+    this.settings.cleanupEnabled = enabled
     this.emitState()
   }
 
@@ -97,7 +105,7 @@ export class Dictation extends EventEmitter {
         this.emit('needs-attention')
         break
       case 'recording-finished':
-        await this.finish(event.path, event.duration)
+        await this.finish(event.path, event.duration, event.app)
         break
       case 'pasted':
         break
@@ -107,7 +115,7 @@ export class Dictation extends EventEmitter {
     }
   }
 
-  private async finish(path: string, duration: number): Promise<void> {
+  private async finish(path: string, duration: number, app?: string): Promise<void> {
     const apiKey = this.settings.apiKey
     if (!apiKey) {
       await rm(path, { force: true })
@@ -118,10 +126,11 @@ export class Dictation extends EventEmitter {
 
     this.setStatus('transcribing')
     try {
-      const text = await transcribe(path, apiKey)
-      if (text) {
+      const raw = await transcribe(path, apiKey)
+      if (raw) {
+        const text = this.settings.cleanupEnabled ? await this.cleanUpOrKeep(raw, apiKey, app) : raw
         this.helper.send({ cmd: 'paste', text })
-        this.history.add(text, duration)
+        this.history.add({ text, rawText: text !== raw ? raw : undefined, app, durationSeconds: duration })
         this.emit('history')
         this.error = null
       } else {
@@ -134,6 +143,16 @@ export class Dictation extends EventEmitter {
     } finally {
       await rm(path, { force: true }) // recordings never outlive their transcription
       this.setStatus('idle')
+    }
+  }
+
+  /** Cleanup is best-effort: on any problem, paste exactly what was transcribed. */
+  private async cleanUpOrKeep(raw: string, apiKey: string, app?: string): Promise<string> {
+    try {
+      return await cleanUp(raw, apiKey, { app })
+    } catch (error) {
+      console.warn('[cleanup] using raw transcript:', error instanceof Error ? error.message : error)
+      return raw
     }
   }
 
