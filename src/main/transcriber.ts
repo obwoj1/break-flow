@@ -57,6 +57,20 @@ export async function transcribe(wavPath: string, apiKey: string): Promise<strin
   return body.text.trim()
 }
 
+/** Checks a key with a cheap authenticated call before saving it. Returns an error message, or null if OK. */
+export async function verifyApiKey(apiKey: string): Promise<string | null> {
+  try {
+    const response = await fetch('https://api.openai.com/v1/models', {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (response.ok) return null
+    return (await errorFrom(response)).message
+  } catch {
+    return "Couldn't reach OpenAI to check the key — check your internet."
+  }
+}
+
 async function errorFrom(response: Response): Promise<TranscriptionError> {
   if (response.status === 401) {
     return new TranscriptionError('OpenAI rejected the API key.', true)
