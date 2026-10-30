@@ -44,10 +44,12 @@ function start(): void {
   dictation.on('history', () => mainWindow?.webContents.send('history', history.list()))
   dictation.on('needs-attention', showWindow)
 
+  // Start the helper before anything reads settings: reading the API key can wait on a Keychain
+  // prompt, and the hotkey should be listening regardless.
+  dictation.start()
   registerIpc(dictation, history)
   createWindow()
   tray.update(dictation.snapshot())
-  dictation.start()
 
   // Permissions can change in System Settings while we're in the background.
   app.on('browser-window-focus', () => dictation.emitState())
