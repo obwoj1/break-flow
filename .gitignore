@@ -7,3 +7,6 @@ xcuserdata/
 *.caf
 *.wav
 .env
+node_modules/
+out/
+dist/
