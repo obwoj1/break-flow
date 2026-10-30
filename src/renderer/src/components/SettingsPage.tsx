@@ -31,6 +31,26 @@ export function SettingsPage({ state }: { state: AppState }) {
       </section>
 
       <section className="card">
+        <div className="row">
+          <div>
+            <h2>AI cleanup</h2>
+            <p className="muted">
+              Removes “um”s and false starts, fixes punctuation, and applies “no wait, I meant…” before typing.
+            </p>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={state.cleanupEnabled}
+              onChange={(event) => void window.breakFlow.setCleanupEnabled(event.target.checked)}
+            />
+            <span aria-hidden />
+            <span className="visually-hidden">AI cleanup</span>
+          </label>
+        </div>
+      </section>
+
+      <section className="card">
         <h2>OpenAI API key</h2>
         {state.hasApiKey && !changingKey ? (
           <div className="row">
@@ -50,9 +70,10 @@ export function SettingsPage({ state }: { state: AppState }) {
       <section className="card">
         <h2>Privacy</h2>
         <p className="muted">
-          While you hold the hotkey, Break Flow records your mic. The recording is sent to OpenAI (model{' '}
-          <code>gpt-transcribe</code>) and deleted from your Mac as soon as the text comes back. Transcripts are kept
-          only in your history on this Mac.
+          While you hold the hotkey, Break Flow records your mic. The recording is sent to OpenAI (
+          <code>gpt-transcribe</code>) and deleted from your Mac as soon as the text comes back. With AI cleanup on, the
+          text and the name of the app you're typing into go to OpenAI (<code>gpt-6-luna</code>) too, with storage on
+          their side turned off. Transcripts are kept only in your history on this Mac.
         </p>
       </section>
     </>
