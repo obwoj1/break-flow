@@ -9,6 +9,7 @@ export type HelperEvent =
   | { type: 'ready' | 'status'; accessibility: boolean; microphone: boolean; recording: boolean }
   | { type: 'accessibility'; trusted: boolean }
   | { type: 'recording-started' }
+  | { type: 'level'; value: number }
   | { type: 'recording-finished'; path: string; duration: number; app?: string }
   | { type: 'recording-discarded'; reason: string }
   | { type: 'recording-blocked'; reason: 'disabled' | 'microphone' }

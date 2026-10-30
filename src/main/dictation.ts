@@ -15,6 +15,7 @@ import { transcribe, TranscriptionError } from './transcriber'
  * Emits:
  *   'state'            AppState — whenever anything the UI shows changes
  *   'history'          — after a transcript is added
+ *   'level'            number 0–1 — mic loudness while recording, for the floating pill
  *   'needs-attention'  — the user pressed the hotkey but setup isn't finished; show the window
  */
 export class Dictation extends EventEmitter {
@@ -96,6 +97,9 @@ export class Dictation extends EventEmitter {
         break
       case 'recording-started':
         this.setStatus('recording')
+        break
+      case 'level':
+        this.emit('level', event.value)
         break
       case 'recording-discarded':
         this.setStatus('idle')
