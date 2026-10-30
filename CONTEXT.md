@@ -22,8 +22,13 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
 
 | Date | Decision | Why |
 |---|---|---|
-| 2026-10-30 | **All-Swift menu bar app**, not Electron + Swift helper | One language, tiny app, no IPC between two processes. We can add a UI window later in SwiftUI. |
-| 2026-10-30 | **Swift Package Manager + a build script**, no Xcode project | Only Command Line Tools are installed; SwiftPM builds AppKit apps fine. The script wraps the binary into a `.app`. |
+| 2026-10-30 | ~~All-Swift menu bar app~~ — **superseded same day** | Was: one language, tiny app. |
+| 2026-10-30 | **Electron + Swift helper** (Wispr's architecture) | Oba's call: wants a real app window built with web tech. Electron can't watch a held modifier key system-wide or paste into other apps, so the Swift code stays as a headless helper. |
+| 2026-10-30 | Helper talks to Electron with **JSON lines over stdin/stdout** | Simplest IPC; helper exits when Electron closes its stdin. Helper is spawned directly, so macOS attributes its permissions to the Electron app (one "Break Flow" entry in Settings). |
+| 2026-10-30 | **electron-vite + React + TypeScript**, **electron-builder** for packaging | Same toolchain Universe uses; builder bundles the helper into `Resources/bin/`. |
+| 2026-10-30 | OpenAI calls, settings, history live in **Electron main** | Helper stays OS-only. API key moved from Swift Keychain code to Electron `safeStorage` (Keychain-backed). |
+| 2026-10-30 | Recording **disabled until an API key is saved**; key **verified with OpenAI before saving** | Never record audio we can't use; catch typos immediately. |
+| 2026-10-30 | **Swift Package Manager** for the helper, no Xcode project | Only Command Line Tools are installed. |
 | 2026-10-30 | Default hotkey **Fn**, with **Right Option** as an alternative | Fn matches Wispr. Fn can trigger the emoji picker / Apple dictation, so Right Option is the escape hatch. |
 | 2026-10-30 | **Ad-hoc code signing** for now | No signing certificate on this Mac. Downside: macOS forgets the Accessibility grant after each rebuild (see "Known issues"). |
 | 2026-10-30 | Build in **checkpoints** — stop after each stage so Oba can test | Oba's preference. |
@@ -52,6 +57,20 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
   fake key (got the expected 401 → "OpenAI rejected the API key"). **Not yet tested with a real
   key** — Oba adds his key via the menu and tests.
 - 2026-10-30: Pushed to private GitHub repo `obwoj1/break-flow` (branch `main`).
+- 2026-10-30: Swift-only app installed to /Applications; Oba asked for it as an **Electron app**.
+- 2026-10-30: **Electron conversion code complete (v0.2.0).** Verified: typecheck clean; packaged
+  app launches with the helper as a child; window renders the setup checklist (read via DevTools
+  protocol); sandbox has no `require`; fake key rejected through the UI API and nothing saved.
+  Installed to `/Applications/Break Flow.app` (replaced the Swift-only version, same bundle id).
+  **Not yet tested by Oba**: real key, hold-Fn dictation end to end, tray menu, Right Option.
+
+## Helper ↔ Electron protocol
+
+Commands (Electron → helper): `configure {hotkey, enabled}`, `paste {text}`, `status`.
+Events (helper → Electron): `ready`/`status {accessibility, microphone, recording}`,
+`accessibility {trusted}`, `recording-started`, `recording-finished {path, duration}`,
+`recording-discarded {reason}`, `recording-blocked {reason: disabled|microphone}`, `pasted`,
+`error {message}`. Source of truth: `helper/Sources/BreakFlowHelper/Helper.swift`.
 
 ## Stage 2 details
 
@@ -61,7 +80,8 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
   `keywords` is the hook for a custom dictionary later.
 - Upload: one multipart POST to `/v1/audio/transcriptions` after you let go (no streaming yet).
   Limit 25 MB ≈ 13 min of our WAV.
-- API key: macOS Keychain, service `com.obwoj1.breakflow`, account `openai-api-key`. Never on disk.
+- API key: encrypted with Electron `safeStorage` (Keychain-backed) in
+  `~/Library/Application Support/Break Flow/settings.json` (mode 600). Never stored in plain text.
 - Recordings are deleted right after transcription (success or failure).
 
 ## Open questions
@@ -74,6 +94,10 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
   ("spec ':wrapper.xcdatamodel' already registered"). Workaround: `--build-system native`,
   which the scripts already pass. It prints a deprecation warning; harmless.
 
-- **Accessibility permission resets on every rebuild** (ad-hoc signing changes the app's identity).
-  `scripts/run.sh` resets the old grant so macOS asks again cleanly. A real fix is a self-signed
-  "Break Flow Dev" certificate — later.
+- **Accessibility permission resets on every reinstall** (ad-hoc signing changes the app's identity).
+  `scripts/install-app.mjs` resets the old grant so macOS asks again cleanly. A real fix is a
+  self-signed "Break Flow Dev" certificate — later.
+- **Dev mode permissions go to the terminal** that ran `npm run dev`, not to Break Flow.
+- **npm 11 blocks install scripts** by default, so Electron's binary isn't downloaded on install;
+  the `postinstall` script runs `install-electron` to fix that.
+- Renderer bundle isn't minified (electron-vite default) — 580 KB, irrelevant for a local app.
