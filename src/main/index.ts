@@ -133,6 +133,10 @@ function registerIpc(dictation: Dictation, history: History): void {
     if (hotkey === 'fn' || hotkey === 'rightOption') dictation.setHotkey(hotkey as HotkeyName)
   })
 
+  handle('settings:set-cleanup', (enabled) => {
+    if (typeof enabled === 'boolean') dictation.setCleanupEnabled(enabled)
+  })
+
   handle('settings:save-api-key', async (raw) => {
     const key = typeof raw === 'string' ? raw.trim() : ''
     if (!key || key.length > 512) return { ok: false, error: 'Paste your OpenAI API key.' }
