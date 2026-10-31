@@ -13,6 +13,8 @@ export interface AppState {
   microphone: MicrophoneAccess
   accessibility: boolean
   hasApiKey: boolean
+  /** A key is saved but macOS hasn't let us read it yet (Keychain prompt pending or denied). */
+  apiKeyLocked: boolean
   hotkey: HotkeyName
   /** Whether transcripts get an AI cleanup pass before pasting. */
   cleanupEnabled: boolean
@@ -49,6 +51,7 @@ export interface BreakFlowApi {
   setDictionary(words: string[]): Promise<string[]>
   saveApiKey(key: string): Promise<{ ok: true } | { ok: false; error: string }>
   removeApiKey(): Promise<void>
+  unlockApiKey(): Promise<void>
   requestMicrophone(): Promise<void>
   requestAccessibility(): Promise<void>
 }
