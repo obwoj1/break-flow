@@ -48,6 +48,7 @@ export class Dictation extends EventEmitter {
       hasApiKey: this.settings.hasApiKey,
       hotkey: this.settings.hotkey,
       cleanupEnabled: this.settings.cleanupEnabled,
+      dictionary: this.settings.dictionary,
       error: this.error,
     }
   }
@@ -65,6 +66,12 @@ export class Dictation extends EventEmitter {
   setCleanupEnabled(enabled: boolean): void {
     this.settings.cleanupEnabled = enabled
     this.emitState()
+  }
+
+  setDictionary(words: unknown[]): string[] {
+    const saved = this.settings.setDictionary(words)
+    this.emitState()
+    return saved
   }
 
   saveApiKey(key: string): void {
@@ -130,9 +137,10 @@ export class Dictation extends EventEmitter {
 
     this.setStatus('transcribing')
     try {
-      const raw = await transcribe(path, apiKey)
+      const dictionary = this.settings.dictionary
+      const raw = await transcribe(path, apiKey, dictionary)
       if (raw) {
-        const text = this.settings.cleanupEnabled ? await this.cleanUpOrKeep(raw, apiKey, app) : raw
+        const text = this.settings.cleanupEnabled ? await this.cleanUpOrKeep(raw, apiKey, app, dictionary) : raw
         this.helper.send({ cmd: 'paste', text })
         this.history.add({ text, rawText: text !== raw ? raw : undefined, app, durationSeconds: duration })
         this.emit('history')
@@ -151,9 +159,9 @@ export class Dictation extends EventEmitter {
   }
 
   /** Cleanup is best-effort: on any problem, paste exactly what was transcribed. */
-  private async cleanUpOrKeep(raw: string, apiKey: string, app?: string): Promise<string> {
+  private async cleanUpOrKeep(raw: string, apiKey: string, app?: string, dictionary?: string[]): Promise<string> {
     try {
-      return await cleanUp(raw, apiKey, { app })
+      return await cleanUp(raw, apiKey, { app, dictionary })
     } catch (error) {
       console.warn('[cleanup] using raw transcript:', error instanceof Error ? error.message : error)
       return raw
