@@ -14,6 +14,7 @@ npmRebuild: false
 mac:
   target: dir
   category: public.app-category.productivity
+  icon: build-resources/icon.icns # made by scripts/make-app-icon.swift
   # No certificate yet: skip electron-builder signing, scripts/sign-app.mjs signs ad hoc.
   identity: null
   extendInfo:
