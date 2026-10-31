@@ -82,6 +82,17 @@ Nothing from Wispr's code or assets is copied here — it was reference only. Wh
   was NOT deleted. First launch of the cert-signed build asks for Keychain access once
   (**Always Allow**), and Accessibility must be switched on once more. After that both persist.
 
+- 2026-10-30: Oba said "keep going". **v0.4.0**: custom dictionary (Settings → sent as
+  `keywords[]` to gpt-transcribe + to cleanup; sanitized: no `<>`/newlines, ≤100 words, ≤60 chars,
+  deduped), app icon (`scripts/make-app-icon.swift` → `build-resources/icon.icns`), API key moved
+  to the **async safeStorage API** and decrypted once into memory at startup (no Keychain access on
+  every state read), new **apiKeyLocked** state so a saved key waiting on the Keychain prompt shows
+  "click Always Allow / Try again" instead of asking to re-enter it.
+- 2026-10-30: Verified the cert pays off: reinstall printed no "signer changed" (Accessibility kept).
+  Still pending on Oba's side: **click Always Allow on the Keychain dialog** (SecurityAgent was
+  waiting the whole time — Oba away) and switch Accessibility on once. A pending Keychain dialog
+  still blocks quitting; install-app's 5 s force-quit handles it.
+
 ## Helper ↔ Electron protocol
 
 Commands (Electron → helper): `configure {hotkey, enabled}`, `paste {text}`, `status`.
@@ -104,11 +115,10 @@ Events (helper → Electron): `ready`/`status {accessibility, microphone, record
 
 ## Next ideas (Stage 4 remainder)
 
-- Custom dictionary → `keywords` on `gpt-transcribe` (names, jargon).
 - Streaming transcription while you talk (lower latency).
 - Read the focused text box via Accessibility for richer cleanup context (what Wispr does).
-- Real app icon (still the default Electron icon).
-- `safeStorage.isEncryptionAvailable` is deprecated in Electron 45 → move to the async API.
+- Launch at login toggle.
+- Stats on Home (words dictated, time saved).
 
 ## Open questions
 
