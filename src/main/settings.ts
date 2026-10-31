@@ -6,11 +6,15 @@ import type { HotkeyName } from '../shared/types'
 interface StoredSettings {
   hotkey: HotkeyName
   cleanupEnabled: boolean
+  dictionary: string[]
   /** The OpenAI key, encrypted with macOS Keychain-backed safeStorage, base64. */
   encryptedApiKey?: string
 }
 
-const defaults: StoredSettings = { hotkey: 'fn', cleanupEnabled: true }
+const defaults: StoredSettings = { hotkey: 'fn', cleanupEnabled: true, dictionary: [] }
+
+const MAX_DICTIONARY_WORDS = 100
+const MAX_WORD_LENGTH = 60
 
 /**
  * Settings saved to ~/Library/Application Support/Break Flow/settings.json.
@@ -40,6 +44,17 @@ export class Settings {
   set cleanupEnabled(value: boolean) {
     this.data.cleanupEnabled = value
     this.save()
+  }
+
+  get dictionary(): string[] {
+    return this.data.dictionary
+  }
+
+  /** Saves the cleaned-up list and returns it. */
+  setDictionary(words: unknown[]): string[] {
+    this.data.dictionary = cleanDictionary(words)
+    this.save()
+    return this.data.dictionary
   }
 
   get hasApiKey(): boolean {
@@ -76,6 +91,7 @@ export class Settings {
         ...parsed,
         hotkey: parsed.hotkey === 'rightOption' ? 'rightOption' : 'fn',
         cleanupEnabled: parsed.cleanupEnabled !== false,
+        dictionary: Array.isArray(parsed.dictionary) ? cleanDictionary(parsed.dictionary) : [],
       }
     } catch {
       return { ...defaults }
@@ -85,4 +101,23 @@ export class Settings {
   private save(): void {
     writeFileSync(this.path, JSON.stringify(this.data, null, 2), { mode: 0o600 })
   }
+}
+
+/**
+ * OpenAI rejects the whole transcription if any keyword contains "<", ">" or a line break, so
+ * strip those, trim, drop empties and case-insensitive duplicates, and cap the size.
+ */
+function cleanDictionary(words: unknown[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const word of words) {
+    if (typeof word !== 'string') continue
+    const clean = word.replace(/[<>\r\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_WORD_LENGTH)
+    const key = clean.toLowerCase()
+    if (!clean || seen.has(key)) continue
+    seen.add(key)
+    result.push(clean)
+    if (result.length === MAX_DICTIONARY_WORDS) break
+  }
+  return result
 }
