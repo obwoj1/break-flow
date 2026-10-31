@@ -3,7 +3,7 @@
 Hold a key, talk, let go — your words get typed into whatever app you're in.
 A personal take on Wispr Flow for macOS 13+: an **Electron** app with a small **Swift helper**.
 
-> **Status (v0.3.0):** voice → text with OpenAI (`gpt-transcribe`), AI cleanup (`gpt-6-luna`)
+> **Status (v0.4.0):** custom dictionary, real app icon, plus everything from v0.3.0 — voice → text with OpenAI (`gpt-transcribe`), AI cleanup (`gpt-6-luna`)
 > that removes "um"s and applies self-corrections, a floating pill with live sound bars while you
 > talk, an app window with setup, history and settings, and a menu bar icon.
 > See [CONTEXT.md](CONTEXT.md) for the roadmap and decisions.
@@ -40,6 +40,9 @@ The window walks you through three steps:
    you talk, then dots while OpenAI transcribes and cleans up (usually a second or two).
 3. Your words get typed where the cursor is, and saved to **History** in the window. History
    shows which app you dictated into and lets you flip between the cleaned and original text.
+
+**Dictionary** (Settings): names and jargon to always spell exactly — e.g. your name, "Supabase",
+"Morgan State". They're sent to OpenAI as transcription keywords and to the cleanup step.
 
 **AI cleanup** (on by default, switch in Settings) removes filler words and false starts, fixes
 punctuation, applies "at 3 — no, 4" corrections, and adjusts to the app (casual in chat, exact in
@@ -115,4 +118,5 @@ Undo: `security delete-keychain ~/Library/Keychains/break-flow-dev.keychain-db &
 | `src/main/tray.ts` | Menu bar icon and menu |
 | `src/preload/index.ts` | The only functions the window can call (`window.breakFlow`) |
 | `src/renderer/` | React UI: Home (setup + status), History, Settings; `overlay/` is the pill |
-| `scripts/` | Signing setup + signing, install to /Applications, tray icon generator |
+| `scripts/` | Signing setup + signing, install to /Applications, app + tray icon generators |
+| `build-resources/` | App icon (`icon.icns`, made by `scripts/make-app-icon.swift`) |
