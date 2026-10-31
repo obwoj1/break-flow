@@ -19,10 +19,14 @@ const MAX_WORD_LENGTH = 60
 /**
  * Settings saved to ~/Library/Application Support/Break Flow/settings.json.
  * The API key is encrypted before it's written, so the file never holds it in plain text.
+ *
+ * The key is decrypted once (`loadApiKey`, at startup) and kept in memory, so reading it never waits
+ * on the Keychain. Encryption uses the async safeStorage API, which doesn't block the main process.
  */
 export class Settings {
   private readonly path = join(app.getPath('userData'), 'settings.json')
   private data: StoredSettings
+  private cachedApiKey: string | null = null
 
   constructor() {
     this.data = this.load()
@@ -58,28 +62,40 @@ export class Settings {
   }
 
   get hasApiKey(): boolean {
-    return this.apiKey !== null
+    return this.cachedApiKey !== null
   }
 
   get apiKey(): string | null {
-    if (!this.data.encryptedApiKey || !safeStorage.isEncryptionAvailable()) return null
+    return this.cachedApiKey
+  }
+
+  /** Decrypts the saved key into memory. Call once after the app is ready. */
+  async loadApiKey(): Promise<void> {
+    if (!this.data.encryptedApiKey || !(await safeStorage.isAsyncEncryptionAvailable())) return
     try {
-      return safeStorage.decryptString(Buffer.from(this.data.encryptedApiKey, 'base64'))
+      const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(
+        Buffer.from(this.data.encryptedApiKey, 'base64'),
+      )
+      this.cachedApiKey = result
+      // The encryption key was rotated or upgraded: store the API key under the new one.
+      if (shouldReEncrypt) await this.setApiKey(result)
     } catch {
-      return null // e.g. the Keychain entry was reset; the user re-enters the key
+      this.cachedApiKey = null // e.g. the Keychain item was reset; the user re-enters the key
     }
   }
 
-  setApiKey(key: string): void {
-    if (!safeStorage.isEncryptionAvailable()) {
+  async setApiKey(key: string): Promise<void> {
+    if (!(await safeStorage.isAsyncEncryptionAvailable())) {
       throw new Error('Secure storage (Keychain) is not available.')
     }
-    this.data.encryptedApiKey = safeStorage.encryptString(key).toString('base64')
+    this.data.encryptedApiKey = (await safeStorage.encryptStringAsync(key)).toString('base64')
+    this.cachedApiKey = key
     this.save()
   }
 
   removeApiKey(): void {
     delete this.data.encryptedApiKey
+    this.cachedApiKey = null
     this.save()
   }
 
