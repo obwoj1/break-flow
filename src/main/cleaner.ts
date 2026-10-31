@@ -31,11 +31,17 @@ Reply with only the cleaned text — no quotes, labels or explanations.`
 export interface CleanupContext {
   /** The app the text will be pasted into, e.g. "Slack". */
   app?: string
+  /** Names and jargon the user wants spelled exactly. */
+  dictionary?: string[]
 }
 
 /** Returns the cleaned text, or throws (the caller falls back to the raw transcript). */
 export async function cleanUp(raw: string, apiKey: string, context: CleanupContext = {}): Promise<string> {
-  const input = (context.app ? `Destination app: ${context.app}\n\n` : '') + `<dictation>\n${raw}\n</dictation>`
+  const header = [
+    context.app && `Destination app: ${context.app}`,
+    context.dictionary?.length && `Spell these exactly as written when they come up: ${context.dictionary.join(', ')}`,
+  ].filter(Boolean)
+  const input = (header.length ? header.join('\n') + '\n\n' : '') + `<dictation>\n${raw}\n</dictation>`
 
   let response = await request(apiKey, input, true)
   // If the model rejects the reasoning setting, try once more without it.
