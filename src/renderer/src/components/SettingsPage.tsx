@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { AppState, HotkeyName } from '../../../shared/types'
 import { HOTKEY_LABELS } from '../useBreakFlow'
 import { ApiKeyForm } from './ApiKeyForm'
+import { DictionaryEditor } from './DictionaryEditor'
 
 export function SettingsPage({ state }: { state: AppState }) {
   const [changingKey, setChangingKey] = useState(false)
@@ -48,6 +49,12 @@ export function SettingsPage({ state }: { state: AppState }) {
             <span className="visually-hidden">AI cleanup</span>
           </label>
         </div>
+      </section>
+
+      <section className="card">
+        <h2>Dictionary</h2>
+        <p className="muted">Words Break Flow should always spell exactly — names, products, jargon.</p>
+        <DictionaryEditor words={state.dictionary} />
       </section>
 
       <section className="card">
