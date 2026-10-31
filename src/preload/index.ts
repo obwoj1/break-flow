@@ -22,6 +22,7 @@ const api: BreakFlowApi = {
   setDictionary: (words) => ipcRenderer.invoke('settings:set-dictionary', words),
   saveApiKey: (key) => ipcRenderer.invoke('settings:save-api-key', key),
   removeApiKey: () => ipcRenderer.invoke('settings:remove-api-key'),
+  unlockApiKey: () => ipcRenderer.invoke('settings:unlock-api-key'),
   requestMicrophone: () => ipcRenderer.invoke('permissions:request-microphone'),
   requestAccessibility: () => ipcRenderer.invoke('permissions:request-accessibility'),
 }

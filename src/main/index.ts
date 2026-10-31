@@ -160,6 +160,7 @@ function registerIpc(dictation: Dictation, history: History): void {
     }
   })
   handle('settings:remove-api-key', () => dictation.removeApiKey())
+  handle('settings:unlock-api-key', () => dictation.loadApiKey())
 
   handle('permissions:request-microphone', async () => {
     const status = systemPreferences.getMediaAccessStatus('microphone')
