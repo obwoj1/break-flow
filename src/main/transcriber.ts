@@ -23,7 +23,7 @@ export class TranscriptionError extends Error {
 }
 
 /** Uploads one recording to OpenAI and returns the words. */
-export async function transcribe(wavPath: string, apiKey: string): Promise<string> {
+export async function transcribe(wavPath: string, apiKey: string, keywords: string[] = []): Promise<string> {
   const audio = await readFile(wavPath)
   if (audio.byteLength > MAX_UPLOAD_BYTES) {
     throw new TranscriptionError('Recording too long (over 25 MB).')
@@ -32,6 +32,8 @@ export async function transcribe(wavPath: string, apiKey: string): Promise<strin
   const form = new FormData()
   form.append('model', TRANSCRIPTION_MODEL)
   form.append('response_format', 'json')
+  // Custom dictionary: helps the model spell names and jargon (one repeated field per word).
+  for (const keyword of keywords) form.append('keywords[]', keyword)
   form.append('file', new Blob([audio], { type: 'audio/wav' }), 'speech.wav')
 
   let response: Response
