@@ -59,7 +59,15 @@ export function SettingsPage({ state }: { state: AppState }) {
 
       <section className="card">
         <h2>OpenAI API key</h2>
-        {state.hasApiKey && !changingKey ? (
+        {state.apiKeyLocked && !changingKey ? (
+          <div className="row">
+            <p className="muted">Saved, waiting for Keychain access — click “Always Allow” in the macOS prompt.</p>
+            <span className="row-actions">
+              <button onClick={() => void window.breakFlow.unlockApiKey()}>Try again</button>
+              <button onClick={() => setChangingKey(true)}>Replace</button>
+            </span>
+          </div>
+        ) : state.hasApiKey && !changingKey ? (
           <div className="row">
             <p className="muted">Saved in your Keychain.</p>
             <span className="row-actions">

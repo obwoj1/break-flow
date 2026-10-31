@@ -29,9 +29,18 @@ export function Setup({ state }: { state: AppState }) {
           detail="So it can notice the hotkey in other apps and type for you. Switch on Break Flow in the list — this page updates by itself."
           action={<button onClick={() => void window.breakFlow.requestAccessibility()}>Open Settings</button>}
         />
-        <Step done={state.hasApiKey} title="OpenAI API key" detail="Turns your voice into text.">
-          {!state.hasApiKey && <ApiKeyForm />}
-        </Step>
+        {state.apiKeyLocked ? (
+          <Step
+            done={false}
+            title="OpenAI API key"
+            detail="Your key is saved, but macOS hasn't let Break Flow read it yet. Click “Always Allow” in the Keychain prompt (it may ask for your Mac password)."
+            action={<button onClick={() => void window.breakFlow.unlockApiKey()}>Try again</button>}
+          />
+        ) : (
+          <Step done={state.hasApiKey} title="OpenAI API key" detail="Turns your voice into text.">
+            {!state.hasApiKey && <ApiKeyForm />}
+          </Step>
+        )}
       </ol>
     </section>
   )
