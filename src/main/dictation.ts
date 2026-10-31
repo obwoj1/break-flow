@@ -74,9 +74,16 @@ export class Dictation extends EventEmitter {
     return saved
   }
 
-  saveApiKey(key: string): void {
-    this.settings.setApiKey(key)
+  async saveApiKey(key: string): Promise<void> {
+    await this.settings.setApiKey(key)
     this.error = null
+    this.configureHelper()
+    this.emitState()
+  }
+
+  /** Decrypts the saved API key, then turns recording on if there is one. */
+  async loadApiKey(): Promise<void> {
+    await this.settings.loadApiKey()
     this.configureHelper()
     this.emitState()
   }
