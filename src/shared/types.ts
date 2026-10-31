@@ -16,6 +16,8 @@ export interface AppState {
   hotkey: HotkeyName
   /** Whether transcripts get an AI cleanup pass before pasting. */
   cleanupEnabled: boolean
+  /** Names and jargon to spell exactly (sent as transcription keywords and to cleanup). */
+  dictionary: string[]
   /** Latest problem worth showing, cleared after the next successful dictation. */
   error: string | null
 }
@@ -44,6 +46,7 @@ export interface BreakFlowApi {
   copyText(text: string): Promise<void>
   setHotkey(hotkey: HotkeyName): Promise<void>
   setCleanupEnabled(enabled: boolean): Promise<void>
+  setDictionary(words: string[]): Promise<string[]>
   saveApiKey(key: string): Promise<{ ok: true } | { ok: false; error: string }>
   removeApiKey(): Promise<void>
   requestMicrophone(): Promise<void>
