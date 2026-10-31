@@ -15,7 +15,7 @@ mac:
   target: dir
   category: public.app-category.productivity
   icon: build-resources/icon.icns # made by scripts/make-app-icon.swift
-  # No certificate yet: skip electron-builder signing, scripts/sign-app.mjs signs ad hoc.
+  # electron-builder doesn't sign; scripts/sign-app.mjs signs with the Break Flow Dev certificate.
   identity: null
   extendInfo:
     NSMicrophoneUsageDescription: Break Flow records your voice while you hold the hotkey so it can turn it into text.
