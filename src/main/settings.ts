@@ -65,6 +65,11 @@ export class Settings {
     return this.cachedApiKey !== null
   }
 
+  /** True when an encrypted key is on disk, whether or not it has been decrypted yet. */
+  get hasStoredApiKey(): boolean {
+    return this.data.encryptedApiKey !== undefined
+  }
+
   get apiKey(): string | null {
     return this.cachedApiKey
   }

@@ -46,6 +46,7 @@ export class Dictation extends EventEmitter {
       microphone: systemPreferences.getMediaAccessStatus('microphone'),
       accessibility: systemPreferences.isTrustedAccessibilityClient(false),
       hasApiKey: this.settings.hasApiKey,
+      apiKeyLocked: this.settings.hasStoredApiKey && !this.settings.hasApiKey,
       hotkey: this.settings.hotkey,
       cleanupEnabled: this.settings.cleanupEnabled,
       dictionary: this.settings.dictionary,
