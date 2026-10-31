@@ -44,12 +44,13 @@ function start(): void {
   dictation.on('history', () => mainWindow?.webContents.send('history', history.list()))
   dictation.on('needs-attention', showWindow)
 
-  // Start the helper before anything reads settings: reading the API key can wait on a Keychain
-  // prompt, and the hotkey should be listening regardless.
+  // Start the helper first: decrypting the API key can wait on a Keychain prompt, and the hotkey
+  // should be listening regardless. Recording switches on once the key has loaded.
   dictation.start()
   registerIpc(dictation, history)
   createWindow()
   tray.update(dictation.snapshot())
+  void dictation.loadApiKey()
 
   // Permissions can change in System Settings while we're in the background.
   app.on('browser-window-focus', () => dictation.emitState())
@@ -152,7 +153,7 @@ function registerIpc(dictation: Dictation, history: History): void {
     const problem = await verifyApiKey(key)
     if (problem) return { ok: false, error: problem }
     try {
-      dictation.saveApiKey(key)
+      await dictation.saveApiKey(key)
       return { ok: true }
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) }
