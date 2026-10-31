@@ -19,6 +19,7 @@ const api: BreakFlowApi = {
   copyText: (text) => ipcRenderer.invoke('clipboard:copy', text),
   setHotkey: (hotkey) => ipcRenderer.invoke('settings:set-hotkey', hotkey),
   setCleanupEnabled: (enabled) => ipcRenderer.invoke('settings:set-cleanup', enabled),
+  setDictionary: (words) => ipcRenderer.invoke('settings:set-dictionary', words),
   saveApiKey: (key) => ipcRenderer.invoke('settings:save-api-key', key),
   removeApiKey: () => ipcRenderer.invoke('settings:remove-api-key'),
   requestMicrophone: () => ipcRenderer.invoke('permissions:request-microphone'),

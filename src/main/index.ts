@@ -144,6 +144,8 @@ function registerIpc(dictation: Dictation, history: History): void {
     if (typeof enabled === 'boolean') dictation.setCleanupEnabled(enabled)
   })
 
+  handle('settings:set-dictionary', (words) => (Array.isArray(words) ? dictation.setDictionary(words) : []))
+
   handle('settings:save-api-key', async (raw) => {
     const key = typeof raw === 'string' ? raw.trim() : ''
     if (!key || key.length > 512) return { ok: false, error: 'Paste your OpenAI API key.' }
